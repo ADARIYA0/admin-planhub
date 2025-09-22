@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
 import AdminLayout from '@/components/AdminLayout';
 import EventList from '@/components/EventList';
-import { mockEvents } from '@/data/mockData';
 import { Event } from '@/types';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,19 +12,12 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, MapPin, Users, Image, Award, FileText } from 'lucide-react';
 
 export default function EventsPage() {
-  const [events, setEvents] = useState<Event[]>(mockEvents);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showEventDialog, setShowEventDialog] = useState(false);
 
   const handleCreateEvent = (eventData: any) => {
-    const newEvent: Event = {
-      ...eventData,
-      date: new Date(eventData.date),
-      participants: 0,
-      status: 'upcoming' as const
-    };
-    
-    setEvents(prev => [...prev, newEvent]);
+    // Note: In a real app, this would make an API call to create the event
+    // For now, we just show a success message since the EventList will refetch data
     toast.success('Event berhasil dibuat!', {
       description: `Event "${eventData.title}" telah ditambahkan ke sistem.`
     });
@@ -62,7 +54,6 @@ export default function EventsPage() {
   return (
     <AdminLayout>
       <EventList 
-        events={events} 
         onViewEvent={handleViewEvent}
         onCreateEvent={handleCreateEvent}
       />

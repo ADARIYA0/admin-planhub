@@ -1,25 +1,43 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Event } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
-import { Calendar, Clock, MapPin, Users, Eye, Plus, Search, Filter } from 'lucide-react';
+import { AnimatedDialog, AnimatedDialogContent, AnimatedDialogDescription, AnimatedDialogHeader, AnimatedDialogTitle } from './ui/animated-dialog';
+import { Calendar, Clock, MapPin, Users, Eye, Plus, Search, RefreshCw, AlertCircle, Image } from 'lucide-react';
 import { Input } from './ui/input';
-import EventForm from './EventForm';
+import { useEvents } from '@/hooks/useEvents';
+import AnimatedEventForm from './AnimatedEventForm';
+import ErrorAlert from './ErrorAlert';
 
 interface EventListProps {
-  events: Event[];
   onViewEvent: (event: Event) => void;
   onCreateEvent: (eventData: any) => void;
 }
 
-export default function EventList({ events, onViewEvent, onCreateEvent }: EventListProps) {
+export default function EventList({ onViewEvent, onCreateEvent }: EventListProps) {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [isClosingDialog, setIsClosingDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Event['status']>('all');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const { events, loading, error, refetch, addEvent } = useEvents({
+    search: debouncedSearch || undefined,
+    upcoming: statusFilter === 'upcoming' ? true : undefined,
+    limit: 50
+  });
 
   const getStatusBadge = (status: Event['status']) => {
     const statusConfig = {
@@ -46,25 +64,28 @@ export default function EventList({ events, onViewEvent, onCreateEvent }: EventL
 
   const handleCreateEvent = (eventData: any) => {
     onCreateEvent(eventData);
-    setShowCreateDialog(false);
+    addEvent(eventData);
+    handleCloseDialog();
   };
 
-  // Filter events based on search term and status
-  const filteredEvents = events.filter(event => {
-    const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || event.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
+  const handleCloseDialog = () => {
+    setIsClosingDialog(true);
+    setTimeout(() => {
+      setShowCreateDialog(false);
+      setIsClosingDialog(false);
+    }, 150); // Match CSS animation duration (0.15s)
+  };
+
+  const filteredEvents = events.filter((event: Event) => {
+    if (statusFilter === 'all') return true;
+    return event.status === statusFilter;
   });
 
   const statusCounts = {
     all: events.length,
-    upcoming: events.filter(e => e.status === 'upcoming').length,
-    ongoing: events.filter(e => e.status === 'ongoing').length,
-    completed: events.filter(e => e.status === 'completed').length,
+    upcoming: events.filter((e: Event) => e.status === 'upcoming').length,
+    ongoing: events.filter((e: Event) => e.status === 'ongoing').length,
+    completed: events.filter((e: Event) => e.status === 'completed').length,
   };
 
   return (
@@ -76,14 +97,34 @@ export default function EventList({ events, onViewEvent, onCreateEvent }: EventL
             <h2 className="text-2xl md:text-3xl font-bold mb-2">Daftar Event</h2>
             <p className="text-gray-600">Kelola semua event yang telah dibuat</p>
           </div>
-          <Button 
-            onClick={() => setShowCreateDialog(true)}
-            className="bg-teal-600 hover:bg-teal-700 text-white w-full sm:w-auto"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Buat Event Baru
-          </Button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button 
+              variant="outline"
+              onClick={refetch}
+              disabled={loading}
+              className="border-teal-300 text-teal-700 hover:bg-teal-50"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button 
+              onClick={() => setShowCreateDialog(true)}
+              className="bg-teal-600 hover:bg-teal-700 text-white flex-1 sm:flex-none transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-lg"
+            >
+              <Plus className="h-4 w-4 mr-2 transition-transform duration-200 hover:rotate-90" />
+              Buat Event Baru
+            </Button>
+          </div>
         </div>
+
+        {/* Error State */}
+        {error && (
+          <ErrorAlert 
+            error={error} 
+            onRetry={refetch}
+          />
+        )}
+
 
         {/* Search and Filter Section */}
         <div className="flex flex-col sm:flex-row gap-4">
@@ -132,29 +173,82 @@ export default function EventList({ events, onViewEvent, onCreateEvent }: EventL
           </div>
         </div>
 
-        {/* Events Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {filteredEvents.map((event) => (
-            <Card key={event.id} className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-teal-500 flex flex-col h-full">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start mb-2 gap-2">
-                  <CardTitle className="text-lg leading-tight line-clamp-2 flex-1">
-                    {event.title}
-                  </CardTitle>
-                  {getStatusBadge(event.status)}
-                </div>
-              </CardHeader>
+        {/* Loading State */}
+        {loading && !error && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Card key={index} className="animate-pulse">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start mb-2 gap-2">
+                    <div className="h-5 bg-gray-200 rounded flex-1"></div>
+                    <div className="h-5 w-20 bg-gray-200 rounded"></div>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex flex-col flex-1">
+                  <div className="h-32 bg-gray-200 rounded-lg mb-4"></div>
+                  <div className="space-y-2 mb-4">
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                  </div>
+                  <div className="h-4 bg-gray-200 rounded mb-4"></div>
+                  <div className="h-8 bg-gray-200 rounded mt-auto"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Events Grid with Stagger Animation */}
+        {!loading && !error && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {filteredEvents.map((event: Event, index: number) => (
+            <Card 
+              key={event.id} 
+              className="hover:shadow-lg transition-all duration-300 ease-out border-l-4 border-l-teal-500 flex flex-col h-full transform hover:scale-[1.02] hover:-translate-y-1 animate-in fade-in-0 slide-in-from-bottom-4"
+              style={{
+                animationDelay: `${index * 100}ms`,
+                animationFillMode: 'both'
+              }}
+            >
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start mb-2 gap-2">
+                    <CardTitle className="text-lg leading-tight line-clamp-2 flex-1">
+                      {event.title}
+                    </CardTitle>
+                    {getStatusBadge(event.status)}
+                  </div>
+                </CardHeader>
               <CardContent className="flex flex-col flex-1">
-                {event.flyer && (
-                  <div className="relative h-32 rounded-lg overflow-hidden bg-gray-100 mb-4">
+                <div className="relative h-32 rounded-lg overflow-hidden bg-gray-100 mb-4">
+                  {event.flyer ? (
                     <img
                       src={event.flyer}
-                      alt={`Flyer ${event.title}`}
+                      alt={`Gambar ${event.title}`}
                       className="w-full h-full object-cover"
                       loading="lazy"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const placeholder = target.nextElementSibling as HTMLElement;
+                        if (placeholder) {
+                          placeholder.style.display = 'flex';
+                        }
+                      }}
+                      onLoad={(e) => {
+                        const placeholder = (e.target as HTMLElement).nextElementSibling as HTMLElement;
+                        if (placeholder) {
+                          placeholder.style.display = 'none';
+                        }
+                      }}
                     />
+                  ) : null}
+                  <div className={`absolute inset-0 flex flex-col items-center justify-center text-gray-400 text-xs ${event.flyer ? 'hidden' : 'flex'}`}>
+                    <Image className="h-8 w-8 mb-2 text-gray-300" />
+                    <span>Gambar Event</span>
                   </div>
-                )}
+                </div>
                 
                 <div className="space-y-2 text-sm mb-4">
                   <div className="flex items-center gap-2 text-gray-600">
@@ -183,19 +277,20 @@ export default function EventList({ events, onViewEvent, onCreateEvent }: EventL
                     variant="outline" 
                     size="sm" 
                     onClick={() => onViewEvent(event)}
-                    className="w-full border-teal-300 text-teal-700 hover:bg-teal-50 mt-auto"
+                    className="w-full border-teal-300 text-teal-700 hover:bg-teal-50 mt-auto transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md"
                   >
-                    <Eye className="h-4 w-4 mr-2" />
+                    <Eye className="h-4 w-4 mr-2 transition-transform duration-200 group-hover:scale-110" />
                     Lihat Detail
                   </Button>
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Empty State */}
-        {filteredEvents.length === 0 && (
+        {!loading && !error && filteredEvents.length === 0 && (
           <Card className="p-8 md:p-12 text-center">
             <div className="text-gray-400 mb-4">
               <Calendar className="h-12 md:h-16 w-12 md:w-16 mx-auto mb-4" />
@@ -222,21 +317,31 @@ export default function EventList({ events, onViewEvent, onCreateEvent }: EventL
         )}
       </div>
 
-      {/* Create Event Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Buat Event Baru</DialogTitle>
-            <DialogDescription>
+      {/* Create Event Dialog with Animation */}
+      <AnimatedDialog 
+        open={showCreateDialog} 
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCloseDialog();
+          } else {
+            setShowCreateDialog(true);
+          }
+        }}
+      >
+        <AnimatedDialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <AnimatedDialogHeader>
+            <AnimatedDialogTitle>Buat Event Baru</AnimatedDialogTitle>
+            <AnimatedDialogDescription>
               Lengkapi informasi event yang akan diselenggarakan
-            </DialogDescription>
-          </DialogHeader>
-          <EventForm 
+            </AnimatedDialogDescription>
+          </AnimatedDialogHeader>
+          <AnimatedEventForm 
             onSubmit={handleCreateEvent}
-            onCancel={() => setShowCreateDialog(false)}
+            onCancel={handleCloseDialog}
+            isLoading={false}
           />
-        </DialogContent>
-      </Dialog>
+        </AnimatedDialogContent>
+      </AnimatedDialog>
     </>
   );
 }
