@@ -4,7 +4,6 @@ import { CreateEventFormData, CreateEventResponse, EventApiError } from '@/types
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_KEY;
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 
 if (!API_BASE_URL) {
   throw new Error('NEXT_PUBLIC_API_KEY is not defined in environment variables');
@@ -12,10 +11,6 @@ if (!API_BASE_URL) {
 
 if (!BASE_URL) {
   throw new Error('NEXT_PUBLIC_BASE_URL is not defined in environment variables');
-}
-
-if (!API_KEY) {
-  throw new Error('NEXT_PUBLIC_API_KEY is not defined in environment variables');
 }
 
 // ========================================
@@ -40,7 +35,8 @@ function transformApiEventToEvent(apiEvent: ApiEvent): Event {
     hour12: false
   });
 
-  // Build proper URLs for images based on database structure
+  // Build proper URLs for images based on backend file structure
+  // Backend menyimpan files dengan path yang sesuai dengan UPLOAD_DIRS di upload.js
   const flyerUrl = apiEvent.flyer_kegiatan 
     ? `${BASE_URL?.replace(/\/$/, '') || ''}/uploads/flyer/${apiEvent.flyer_kegiatan}`
     : '';
@@ -52,6 +48,7 @@ function transformApiEventToEvent(apiEvent: ApiEvent): Event {
   const imageUrl = apiEvent.gambar_kegiatan 
     ? `${BASE_URL?.replace(/\/$/, '') || ''}/uploads/events/${apiEvent.gambar_kegiatan}`
     : '';
+
 
   return {
     id: apiEvent.id.toString(),
@@ -177,9 +174,7 @@ export async function fetchEventBySlug(slug: string): Promise<Event> {
 
 export class EventApiService {
   private static getHeaders(includeContentType = true): HeadersInit {
-    const headers: HeadersInit = {
-      'Authorization': `Bearer ${API_KEY}`,
-    };
+    const headers: HeadersInit = {};
 
     if (includeContentType) {
       headers['Content-Type'] = 'application/json';
@@ -326,34 +321,33 @@ export class EventApiService {
     }
 
     // File validation - only validate if it's a File object
-    const maxFileSize = 5 * 1024 * 1024; // 5MB
+    const maxFileSize = 10 * 1024 * 1024; // 10MB
     const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    const allowedFileTypes = [...allowedImageTypes, 'application/pdf'];
 
     // Gambar Event is OPTIONAL but must be image only if provided
     if (data.gambar_kegiatan && typeof data.gambar_kegiatan !== 'string') {
       if (data.gambar_kegiatan.size > maxFileSize) {
-        errors.gambar_kegiatan = 'Ukuran file gambar maksimal 5MB';
+        errors.gambar_kegiatan = 'Ukuran file gambar maksimal 10MB';
       } else if (!allowedImageTypes.includes(data.gambar_kegiatan.type)) {
-        errors.gambar_kegiatan = 'Format file gambar harus JPG, PNG, atau WebP (bukan PDF)';
+        errors.gambar_kegiatan = 'Format file gambar harus JPG, PNG, atau WebP';
       }
     }
 
-    // Flyer Event is OPTIONAL, can be image or PDF
+    // Flyer Event is OPTIONAL, hanya image yang diizinkan
     if (data.flyer_kegiatan && typeof data.flyer_kegiatan !== 'string') {
       if (data.flyer_kegiatan.size > maxFileSize) {
-        errors.flyer_kegiatan = 'Ukuran file flyer maksimal 5MB';
-      } else if (!allowedFileTypes.includes(data.flyer_kegiatan.type)) {
-        errors.flyer_kegiatan = 'Format file flyer harus JPG, PNG, WebP, atau PDF';
+        errors.flyer_kegiatan = 'Ukuran file flyer maksimal 10MB';
+      } else if (!allowedImageTypes.includes(data.flyer_kegiatan.type)) {
+        errors.flyer_kegiatan = 'Format file flyer harus JPG, PNG, atau WebP';
       }
     }
 
-    // Sertifikat is OPTIONAL, can be image or PDF
+    // Sertifikat is OPTIONAL, hanya image yang diizinkan
     if (data.sertifikat_kegiatan && typeof data.sertifikat_kegiatan !== 'string') {
       if (data.sertifikat_kegiatan.size > maxFileSize) {
-        errors.sertifikat_kegiatan = 'Ukuran file sertifikat maksimal 5MB';
-      } else if (!allowedFileTypes.includes(data.sertifikat_kegiatan.type)) {
-        errors.sertifikat_kegiatan = 'Format file sertifikat harus JPG, PNG, WebP, atau PDF';
+        errors.sertifikat_kegiatan = 'Ukuran file sertifikat maksimal 10MB';
+      } else if (!allowedImageTypes.includes(data.sertifikat_kegiatan.type)) {
+        errors.sertifikat_kegiatan = 'Format file sertifikat harus JPG, PNG, atau WebP';
       }
     }
 

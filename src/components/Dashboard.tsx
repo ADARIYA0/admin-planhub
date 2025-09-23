@@ -104,7 +104,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Welcome Header */}
       <div
         className="relative rounded-2xl p-8 text-white overflow-hidden"
         style={{
@@ -140,7 +139,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Error State */}
       {error && (
         <ErrorAlert
           error={error}
@@ -148,7 +146,6 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Quick Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <Card className="border-l-4 border-l-teal-500 hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -242,7 +239,6 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        {/* Upcoming Events */}
         <div className="lg:col-span-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -260,10 +256,10 @@ export default function Dashboard() {
               {upcomingEvents.length > 0 ? (
                 upcomingEvents.map((event) => (
                   <div key={event.id} className="flex gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                    {event.flyer && (
+                    {event.imageUrl && event.imageUrl !== '/placeholder-event.jpg' && (
                       <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                         <img
-                          src={event.flyer}
+                          src={event.imageUrl}
                           alt={event.title}
                           className="w-full h-full object-cover"
                           onError={(e) => {
@@ -313,7 +309,6 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Quick Actions */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -349,7 +344,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Event Performance */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Event Terpopuler</CardTitle>
@@ -393,7 +387,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Event Form Dialog */}
       <EventFormDialog
         open={showCreateEventDialog}
         onOpenChange={setShowCreateEventDialog}

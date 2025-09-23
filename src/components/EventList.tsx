@@ -56,10 +56,15 @@ export default function EventList({ onViewEvent, onCreateEvent }: EventListProps
     }).format(date);
   };
 
-  const handleCreateEvent = (eventData: any) => {
+  const handleCreateEvent = async (eventData: any) => {
     onCreateEvent(eventData);
     addEvent(eventData);
     handleCloseDialog();
+    
+    // Refetch data from server to ensure fresh data with proper URLs
+    setTimeout(async () => {
+      await refetch();
+    }, 500); // Small delay to ensure backend processing is complete
   };
 
   const handleCloseDialog = () => {
@@ -85,7 +90,6 @@ export default function EventList({ onViewEvent, onCreateEvent }: EventListProps
   return (
     <>
       <div className="space-y-6">
-        {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h2 className="text-2xl md:text-3xl font-bold mb-2">Daftar Event</h2>
@@ -111,7 +115,6 @@ export default function EventList({ onViewEvent, onCreateEvent }: EventListProps
           </div>
         </div>
 
-        {/* Error State */}
         {error && (
           <ErrorAlert 
             error={error} 
@@ -120,7 +123,6 @@ export default function EventList({ onViewEvent, onCreateEvent }: EventListProps
         )}
 
 
-        {/* Search and Filter Section */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -167,7 +169,6 @@ export default function EventList({ onViewEvent, onCreateEvent }: EventListProps
           </div>
         </div>
 
-        {/* Loading State */}
         {loading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {Array.from({ length: 6 }).map((_, index) => (
@@ -194,7 +195,6 @@ export default function EventList({ onViewEvent, onCreateEvent }: EventListProps
           </div>
         )}
 
-        {/* Events Grid with Stagger Animation */}
         {!loading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {filteredEvents.map((event: Event, index: number) => (
@@ -216,9 +216,9 @@ export default function EventList({ onViewEvent, onCreateEvent }: EventListProps
                 </CardHeader>
               <CardContent className="flex flex-col flex-1">
                 <div className="relative h-32 rounded-lg overflow-hidden bg-gray-100 mb-4">
-                  {event.flyer ? (
+                  {event.imageUrl && event.imageUrl !== '/placeholder-event.jpg' ? (
                     <img
-                      src={event.flyer}
+                      src={event.imageUrl}
                       alt={`Gambar ${event.title}`}
                       className="w-full h-full object-cover"
                       loading="lazy"
@@ -238,7 +238,7 @@ export default function EventList({ onViewEvent, onCreateEvent }: EventListProps
                       }}
                     />
                   ) : null}
-                  <div className={`absolute inset-0 flex flex-col items-center justify-center text-gray-400 text-xs ${event.flyer ? 'hidden' : 'flex'}`}>
+                  <div className={`absolute inset-0 flex flex-col items-center justify-center text-gray-400 text-xs ${event.imageUrl && event.imageUrl !== '/placeholder-event.jpg' ? 'hidden' : 'flex'}`}>
                     <Image className="h-8 w-8 mb-2 text-gray-300" />
                     <span>Gambar Event</span>
                   </div>
@@ -291,7 +291,6 @@ export default function EventList({ onViewEvent, onCreateEvent }: EventListProps
           </div>
         )}
 
-        {/* Empty State */}
         {!loading && !error && filteredEvents.length === 0 && (
           <Card className="p-8 md:p-12 text-center">
             <div className="text-gray-400 mb-4">
@@ -319,7 +318,6 @@ export default function EventList({ onViewEvent, onCreateEvent }: EventListProps
         )}
       </div>
 
-      {/* Create Event Dialog with Animation */}
       <AnimatedDialog 
         open={showCreateDialog} 
         onOpenChange={(open) => {

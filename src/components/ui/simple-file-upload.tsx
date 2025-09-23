@@ -165,7 +165,7 @@ export default function SimpleFileUpload({
               <span className="text-sm font-medium">Klik untuk upload file</span>
             </Button>
             <p className="text-xs text-gray-500 text-center">
-              {accept.map(type => type.replace('.', '').toUpperCase()).join(', ')} • Max 5MB
+              {accept.map(type => type.replace('.', '').toUpperCase()).join(', ')} • Max 10MB
             </p>
           </div>
         ) : (

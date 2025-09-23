@@ -172,9 +172,9 @@ export default function EventsPage() {
                   </div>
                   <Card>
                     <CardContent className="p-4">
-                      <p className="text-sm text-gray-700 leading-relaxed">
+                      <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
                         {selectedEvent.description}
-                      </p>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -186,11 +186,38 @@ export default function EventsPage() {
                       <Award className="h-4 w-4 text-teal-600" />
                       <h4 className="font-medium">Template Sertifikat</h4>
                     </div>
-                    <div className="h-32 rounded-lg overflow-hidden bg-gray-100">
+                    <div className="rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
                       <img
                         src={selectedEvent.certificate}
                         alt={`Sertifikat ${selectedEvent.title}`}
-                        className="w-full h-full object-cover"
+                        className="w-full h-auto object-contain max-h-96"
+                        style={{ aspectRatio: 'auto' }}
+                        onLoad={(e) => {
+                          const img = e.target as HTMLImageElement;
+                          const container = img.parentElement;
+                          if (container) {
+                            // Auto-adjust container height based on image aspect ratio
+                            const aspectRatio = img.naturalHeight / img.naturalWidth;
+                            const containerWidth = container.offsetWidth;
+                            const calculatedHeight = containerWidth * aspectRatio;
+                            container.style.height = `${Math.min(calculatedHeight, 384)}px`; // max 384px (max-h-96)
+                          }
+                        }}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const container = target.parentElement;
+                          if (container) {
+                            container.innerHTML = `
+                              <div class="flex items-center justify-center h-32 text-gray-400">
+                                <div class="text-center">
+                                  <Award class="h-8 w-8 mx-auto mb-2" />
+                                  <p class="text-sm">Gagal memuat sertifikat</p>
+                                </div>
+                              </div>
+                            `;
+                          }
+                        }}
                       />
                     </div>
                   </div>

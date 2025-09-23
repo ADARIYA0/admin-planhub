@@ -10,6 +10,7 @@ import { EventApiService } from '@/services/eventService';
 import { CreateEventFormData } from '@/types/event-api';
 import SimpleFileUpload from './ui/simple-file-upload';
 import PriceInput from './ui/price-input';
+import CapacityInput from './ui/capacity-input';
 import CustomValidation from './ui/custom-validation';
 
 interface AnimatedEventFormProps {
@@ -36,15 +37,11 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isUnlimitedCapacity, setIsUnlimitedCapacity] = useState(false);
-    
-    // File upload states
     const [selectedFiles, setSelectedFiles] = useState<{
         flyer_kegiatan?: File;
         gambar_kegiatan?: File;
         sertifikat_kegiatan?: File;
     }>({});
-
-    // File upload toggle states
     const [showFileUploads, setShowFileUploads] = useState({
         gambar_kegiatan: false,
         flyer_kegiatan: false,
@@ -96,7 +93,9 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
 
             const response = await EventApiService.createEvent(apiData);
             
-            // Transform API response to Event interface
+            // Backend returns filenames, construct full URLs for frontend
+            const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+            
             const eventData = {
                 id: response.data?.id?.toString() || Date.now().toString(),
                 title: formData.judul_kegiatan!,
@@ -107,16 +106,27 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
                 capacity: isUnlimitedCapacity ? 0 : (formData.kapasitas_peserta || 0),
                 price: formData.harga || 0,
                 status: 'upcoming' as const,
-                imageUrl: (response.data as any)?.gambar_kegiatan || '/placeholder-event.jpg',
-                flyerUrl: (response.data as any)?.flyer_kegiatan,
-                certificateUrl: (response.data as any)?.sertifikat_kegiatan,
+                imageUrl: (response.data as any)?.gambar_kegiatan 
+                    ? `${BASE_URL?.replace(/\/$/, '') || ''}/uploads/events/${(response.data as any).gambar_kegiatan}`
+                    : '/placeholder-event.jpg',
+                flyer: (response.data as any)?.flyer_kegiatan 
+                    ? `${BASE_URL?.replace(/\/$/, '') || ''}/uploads/flyer/${(response.data as any).flyer_kegiatan}`
+                    : '',
+                certificate: (response.data as any)?.sertifikat_kegiatan 
+                    ? `${BASE_URL?.replace(/\/$/, '') || ''}/uploads/certificates/${(response.data as any).sertifikat_kegiatan}`
+                    : '',
+                participants: 0,
+                time: new Date(formData.waktu_mulai!).toLocaleTimeString('id-ID', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }),
+                date: new Date(formData.waktu_mulai!),
                 createdAt: new Date(),
                 updatedAt: new Date()
             };
             
             onSubmit(eventData);
-            
-            // Reset form
             setFormData({
                 judul_kegiatan: '',
                 deskripsi_kegiatan: '',
@@ -138,7 +148,6 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
             });
             setErrors({});
         } catch (error) {
-            // Handle error silently
         } finally {
             setIsSubmitting(false);
         }
@@ -255,7 +264,6 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
     return (
         <div className="space-y-6 p-6 max-w-full overflow-hidden">
             <form onSubmit={handleSubmit} className="space-y-6 max-w-full">
-                {/* Title Field */}
                 <div className="transform transition-all duration-200 ease-in-out hover:translate-y-[-1px]">
                     <Label htmlFor="judul_kegiatan" className={getLabelClasses('judul_kegiatan')}>
                         <FileText className={`h-4 w-4 transition-colors duration-200 ${focusedField === 'judul_kegiatan' ? 'text-teal-600' : 'text-teal-500'
@@ -278,7 +286,6 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
                     )}
                 </div>
 
-                {/* Date and Time Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="transform transition-all duration-200 ease-in-out hover:translate-y-[-1px]">
                         <Label htmlFor="waktu_mulai" className={getLabelClasses('waktu_mulai')}>
@@ -324,7 +331,6 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
                     </div>
                 </div>
 
-                {/* Location Field */}
                 <div className="transform transition-all duration-200 ease-in-out hover:translate-y-[-1px]">
                     <Label htmlFor="lokasi_kegiatan" className={getLabelClasses('lokasi_kegiatan')}>
                         <MapPin className={`h-4 w-4 transition-colors duration-200 ${focusedField === 'lokasi_kegiatan' ? 'text-teal-600' : 'text-teal-500'
@@ -347,7 +353,6 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
                     )}
                 </div>
 
-                {/* Capacity and Price Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="transform transition-all duration-200 ease-in-out hover:translate-y-[-1px]">
                         <Label className={getLabelClasses('kapasitas_peserta')}>
@@ -357,7 +362,6 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
                         </Label>
                         
                         <div className="space-y-4">
-                            {/* Toggle untuk unlimited capacity */}
                             <div className="flex flex-col sm:flex-row gap-2">
                                 <button
                                     type="button"
@@ -385,20 +389,19 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
                                 </button>
                             </div>
 
-                            {/* Input field untuk capacity */}
                             {!isUnlimitedCapacity ? (
-                                <Input
+                                <CapacityInput
                                     id="kapasitas_peserta"
                                     name="kapasitas_peserta"
-                                    type="number"
-                                    min="1"
-                                    value={formData.kapasitas_peserta || ''}
-                                    onChange={handleChange}
+                                    value={formData.kapasitas_peserta || 0}
+                                    onChange={(value) => setFormData(prev => ({ ...prev, kapasitas_peserta: value }))}
                                     onFocus={() => handleFocus('kapasitas_peserta')}
                                     onBlur={handleBlur}
                                     placeholder="Masukkan jumlah peserta"
                                     disabled={isSubmitting}
-                                    className={getFieldClasses('kapasitas_peserta', 'focus:border-teal-500 text-center')}
+                                    error={errors.kapasitas_peserta}
+                                    isFocused={focusedField === 'kapasitas_peserta'}
+                                    min={1}
                                 />
                             ) : (
                                 <div className="p-4 bg-gradient-to-r from-teal-50 to-teal-100 border-2 border-teal-200 rounded-lg">
@@ -445,7 +448,6 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
                     </div>
                 </div>
 
-                {/* File Upload Fields - Toggle System */}
                 <div className="space-y-6">
                     <div className="bg-gray-50 p-4 rounded-lg border">
                         <h3 className="text-sm font-medium text-gray-700 mb-4 flex items-center gap-2">
@@ -483,7 +485,7 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
                             >
                                 <FileText className="h-5 w-5" />
                                 <span className="text-xs font-medium">Flyer Event</span>
-                                <span className="text-xs opacity-75">Gambar atau PDF</span>
+                                <span className="text-xs opacity-75">JPG, PNG, WebP</span>
                             </Button>
 
                             <Button
@@ -504,7 +506,6 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
                         </div>
                     </div>
 
-                    {/* File Upload Components - Show only if toggled */}
                     <div className="space-y-4">
                         {showFileUploads.gambar_kegiatan && (
                             <div className="transform transition-all duration-200 ease-in-out hover:translate-y-[-1px] animate-in slide-in-from-top-2 fade-in-0">
@@ -518,7 +519,7 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
                                     error={errors.gambar_kegiatan}
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
-                                    Hanya file gambar (JPG, PNG, WebP) yang diizinkan.
+                                    Hanya file gambar (JPG, PNG, WebP) yang diizinkan. Maksimal 10MB.
                                 </p>
                             </div>
                         )}
@@ -527,7 +528,7 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
                             <div className="transform transition-all duration-200 ease-in-out hover:translate-y-[-1px] animate-in slide-in-from-top-2 fade-in-0">
                                 <SimpleFileUpload
                                     label="Flyer Event"
-                                    accept={['.jpg', '.jpeg', '.png', '.webp', '.pdf']}
+                                    accept={['.jpg', '.jpeg', '.png', '.webp']}
                                     onFileSelected={(file) => handleFileSelected('flyer_kegiatan', file)}
                                     onFileRemoved={() => handleFileRemoved('flyer_kegiatan')}
                                     currentFile={selectedFiles.flyer_kegiatan}
@@ -535,7 +536,7 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
                                     error={errors.flyer_kegiatan}
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
-                                    File gambar atau PDF untuk flyer event.
+                                    Hanya file gambar (JPG, PNG, WebP) yang diizinkan. Maksimal 10MB.
                                 </p>
                             </div>
                         )}
@@ -544,7 +545,7 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
                             <div className="transform transition-all duration-200 ease-in-out hover:translate-y-[-1px] animate-in slide-in-from-top-2 fade-in-0">
                                 <SimpleFileUpload
                                     label="Template Sertifikat"
-                                    accept={['.jpg', '.jpeg', '.png', '.webp', '.pdf']}
+                                    accept={['.jpg', '.jpeg', '.png', '.webp']}
                                     onFileSelected={(file) => handleFileSelected('sertifikat_kegiatan', file)}
                                     onFileRemoved={() => handleFileRemoved('sertifikat_kegiatan')}
                                     currentFile={selectedFiles.sertifikat_kegiatan}
@@ -552,14 +553,13 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
                                     error={errors.sertifikat_kegiatan}
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
-                                    Template untuk sertifikat peserta event.
+                                    Hanya file gambar (JPG, PNG, WebP) yang diizinkan. Maksimal 10MB.
                                 </p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Description Field */}
                 <div className="transform transition-all duration-200 ease-in-out hover:translate-y-[-1px]">
                     <Label htmlFor="deskripsi_kegiatan" className={getLabelClasses('deskripsi_kegiatan')}>
                         <FileText className={`h-4 w-4 transition-colors duration-200 ${focusedField === 'deskripsi_kegiatan' ? 'text-teal-600' : 'text-teal-500'
@@ -583,7 +583,6 @@ export default function AnimatedEventForm({ onSubmit, onCancel }: AnimatedEventF
                     )}
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-100">
                     <Button
                         type="submit"
