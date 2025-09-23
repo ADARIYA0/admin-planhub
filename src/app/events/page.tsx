@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from 'react';
-import { toast } from 'sonner';
-import { Toaster } from '@/components/ui/sonner';
 import AdminLayout from '@/components/AdminLayout';
 import EventList from '@/components/EventList';
 import { Event } from '@/types';
@@ -16,11 +14,7 @@ export default function EventsPage() {
   const [showEventDialog, setShowEventDialog] = useState(false);
 
   const handleCreateEvent = (eventData: any) => {
-    // Note: In a real app, this would make an API call to create the event
-    // For now, we just show a success message since the EventList will refetch data
-    toast.success('Event berhasil dibuat!', {
-      description: `Event "${eventData.title}" telah ditambahkan ke sistem.`
-    });
+    // Handle event creation
   };
 
   const handleViewEvent = (event: Event) => {
@@ -36,6 +30,20 @@ export default function EventsPage() {
     }).format(date);
   };
 
+  const formatTime = (date: Date) => {
+    return new Intl.DateTimeFormat('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(date);
+  };
+
+  const formatTimeRange = (startDate: Date, endDate: Date) => {
+    const startTime = formatTime(startDate);
+    const endTime = formatTime(endDate);
+    return `${startTime} - ${endTime}`;
+  };
+
   const getStatusBadge = (status: Event['status']) => {
     const statusConfig = {
       upcoming: { label: 'Akan Datang', className: 'bg-blue-100 text-blue-800' },
@@ -43,7 +51,7 @@ export default function EventsPage() {
       completed: { label: 'Selesai', className: 'bg-gray-100 text-gray-800' }
     };
     
-    const config = statusConfig[status];
+    const config = statusConfig[status] || { label: 'Unknown', className: 'bg-gray-100 text-gray-800' };
     return (
       <Badge className={`${config.className} border-0`}>
         {config.label}
@@ -58,15 +66,23 @@ export default function EventsPage() {
         onCreateEvent={handleCreateEvent}
       />
       
-      <Toaster position="top-right" richColors />
+      {/* <Toaster position="top-right" richColors /> */}
 
       {/* Event Detail Dialog */}
       <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           {selectedEvent && (
             <>
-              <DialogHeader>
-                <DialogTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <DialogHeader className="flex-shrink-0 relative">
+                <button
+                  onClick={() => setShowEventDialog(false)}
+                  className="absolute -top-2 -right-2 z-10 w-8 h-8 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 hover:border-red-200 transition-all duration-200 hover:scale-110 hover:rotate-90"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                <DialogTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pr-10">
                   <span className="text-lg md:text-xl">{selectedEvent.title}</span>
                   {getStatusBadge(selectedEvent.status)}
                 </DialogTitle>
@@ -75,12 +91,13 @@ export default function EventsPage() {
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="space-y-6">
+              <div className="flex-1 overflow-y-auto scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                <div className="space-y-6 p-1">
                 {/* Flyer */}
                 {selectedEvent.flyer && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Image className="h-4 w-4 text-teal-600" />
+                      <FileText className="h-4 w-4 text-teal-600" />
                       <h4 className="font-medium">Flyer Event</h4>
                     </div>
                     <div className="h-48 rounded-lg overflow-hidden bg-gray-100">
@@ -101,8 +118,11 @@ export default function EventsPage() {
                         <Calendar className="h-4 w-4 text-teal-600" />
                         <span className="text-sm font-medium">Tanggal & Waktu</span>
                       </div>
-                      <p className="text-sm">{formatDate(selectedEvent.date)}</p>
-                      <p className="text-sm text-gray-600">{selectedEvent.time} WIB</p>
+                      <p className="text-sm font-medium">{formatDate(selectedEvent.startDate)}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Clock className="h-3 w-3 text-gray-500" />
+                        <p className="text-xs text-gray-600">{formatTimeRange(selectedEvent.startDate, selectedEvent.endDate)}</p>
+                      </div>
                     </CardContent>
                   </Card>
 
@@ -122,7 +142,12 @@ export default function EventsPage() {
                         <Users className="h-4 w-4 text-teal-600" />
                         <span className="text-sm font-medium">Peserta</span>
                       </div>
-                      <p className="text-sm">{selectedEvent.participants} orang terdaftar</p>
+                      <p className="text-sm font-medium">
+                        {selectedEvent.participants} / {selectedEvent.capacity === 0 ? '∞' : selectedEvent.capacity}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {selectedEvent.capacity === 0 ? 'Tidak terbatas' : `${selectedEvent.participants} dari ${selectedEvent.capacity} peserta`}
+                      </p>
                     </CardContent>
                   </Card>
 
@@ -170,6 +195,7 @@ export default function EventsPage() {
                     </div>
                   </div>
                 )}
+                </div>
               </div>
             </>
           )}

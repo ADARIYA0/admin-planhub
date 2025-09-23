@@ -15,7 +15,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, SetValue<T>] {
         setStoredValue(JSON.parse(item));
       }
     } catch (error) {
-      console.log(`Error reading localStorage key "${key}":`, error);
+      // Handle error silently
     }
     setIsInitialized(true);
   }, [key]);
@@ -33,7 +33,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, SetValue<T>] {
         window.localStorage.setItem(key, JSON.stringify(valueToStore));
       }
     } catch (error) {
-      console.log(`Error setting localStorage key "${key}":`, error);
+      // Handle error silently
     }
   };
 

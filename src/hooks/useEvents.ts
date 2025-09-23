@@ -12,6 +12,7 @@ interface UseEventsParams {
   upcoming?: boolean;
   category?: string;
   time_range?: 'today' | 'this_week' | 'this_month' | 'next_month';
+  status?: 'upcoming' | 'ongoing' | 'completed';
 }
 
 interface UseEventsReturn {

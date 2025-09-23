@@ -10,6 +10,7 @@ import { AnimatedDialog, AnimatedDialogContent, AnimatedDialogDescription, Anima
 import { Calendar, Clock, MapPin, Users, Eye, Plus, Search, RefreshCw, AlertCircle, Image } from 'lucide-react';
 import { Input } from './ui/input';
 import { useEvents } from '@/hooks/useEvents';
+import { useDebounce } from '@/hooks/useDebounce';
 import AnimatedEventForm from './AnimatedEventForm';
 import ErrorAlert from './ErrorAlert';
 
@@ -23,20 +24,13 @@ export default function EventList({ onViewEvent, onCreateEvent }: EventListProps
   const [isClosingDialog, setIsClosingDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Event['status']>('all');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+  
+  // Use debounce hook with 400ms delay for better UX
+  const debouncedSearch = useDebounce(searchTerm, 400);
 
   const { events, loading, error, refetch, addEvent } = useEvents({
-    search: debouncedSearch || undefined,
-    upcoming: statusFilter === 'upcoming' ? true : undefined,
-    limit: 50
+    search: debouncedSearch,
+    status: statusFilter === 'all' ? undefined : statusFilter
   });
 
   const getStatusBadge = (status: Event['status']) => {
@@ -46,7 +40,7 @@ export default function EventList({ onViewEvent, onCreateEvent }: EventListProps
       completed: { label: 'Selesai', className: 'bg-gray-100 text-gray-800' }
     };
     
-    const config = statusConfig[status];
+    const config = statusConfig[status] || { label: 'Unknown', className: 'bg-gray-100 text-gray-800' };
     return (
       <Badge className={`${config.className} border-0`}>
         {config.label}
@@ -257,7 +251,15 @@ export default function EventList({ onViewEvent, onCreateEvent }: EventListProps
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
                     <Clock className="h-4 w-4 text-teal-600 flex-shrink-0" />
-                    <span>{event.time} WIB</span>
+                    <span>{new Intl.DateTimeFormat('id-ID', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false
+                    }).format(event.startDate)} - {new Intl.DateTimeFormat('id-ID', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false
+                    }).format(event.endDate)} WIB</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
                     <MapPin className="h-4 w-4 text-teal-600 flex-shrink-0" />
@@ -265,7 +267,7 @@ export default function EventList({ onViewEvent, onCreateEvent }: EventListProps
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
                     <Users className="h-4 w-4 text-teal-600 flex-shrink-0" />
-                    <span>{event.participants} peserta</span>
+                    <span>{event.participants} / {event.capacity === 0 ? '∞' : event.capacity} peserta</span>
                   </div>
                 </div>
 
@@ -328,18 +330,27 @@ export default function EventList({ onViewEvent, onCreateEvent }: EventListProps
           }
         }}
       >
-        <AnimatedDialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <AnimatedDialogHeader>
-            <AnimatedDialogTitle>Buat Event Baru</AnimatedDialogTitle>
+        <AnimatedDialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          <AnimatedDialogHeader className="flex-shrink-0 relative">
+            <button
+              onClick={handleCloseDialog}
+              className="absolute -top-2 -right-2 z-10 w-8 h-8 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 hover:border-red-200 transition-all duration-200 hover:scale-110 hover:rotate-90"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <AnimatedDialogTitle className="pr-10">Buat Event Baru</AnimatedDialogTitle>
             <AnimatedDialogDescription>
               Lengkapi informasi event yang akan diselenggarakan
             </AnimatedDialogDescription>
           </AnimatedDialogHeader>
-          <AnimatedEventForm 
-            onSubmit={handleCreateEvent}
-            onCancel={handleCloseDialog}
-            isLoading={false}
-          />
+          <div className="flex-1 overflow-y-auto scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+            <AnimatedEventForm 
+              onSubmit={handleCreateEvent}
+              onCancel={handleCloseDialog}
+            />
+          </div>
         </AnimatedDialogContent>
       </AnimatedDialog>
     </>

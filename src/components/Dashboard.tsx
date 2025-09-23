@@ -1,12 +1,14 @@
 "use client";
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { 
-  Calendar, 
-  Users, 
-  TrendingUp, 
+import {
+  Calendar,
+  Users,
+  TrendingUp,
   Clock,
   MapPin,
   ArrowRight,
@@ -19,18 +21,21 @@ import {
 import { Event } from '../types';
 import { useEvents } from '../hooks/useEvents';
 import ErrorAlert from './ErrorAlert';
+import EventFormDialog from './ui/event-form-dialog';
 
 
 export default function Dashboard() {
-  const { events, loading, error, refetch } = useEvents({ limit: 10 });
-  
+  const [showCreateEventDialog, setShowCreateEventDialog] = useState(false);
+  const router = useRouter();
+  const { events, loading, error, refetch, addEvent } = useEvents({ limit: 10 });
+
   const totalEvents = events.length;
   const upcomingEvents = events.filter((event: Event) => event.status === 'upcoming').slice(0, 5);
   const ongoingEvents = events.filter((event: Event) => event.status === 'ongoing');
   const completedEvents = events.filter((event: Event) => event.status === 'completed');
-  
+
   const totalParticipants = events.reduce((sum: number, event: Event) => sum + event.participants, 0);
-  
+
   const currentMonth = new Date().getMonth();
   const monthlyStats = [
     { month: 'Jan', events: 0, participants: 0 },
@@ -46,7 +51,7 @@ export default function Dashboard() {
     { month: 'Nov', events: 0, participants: 0 },
     { month: 'Dec', events: 0, participants: 0 }
   ];
-  
+
   monthlyStats[currentMonth] = {
     month: monthlyStats[currentMonth].month,
     events: events.filter((event: Event) => new Date(event.date).getMonth() === currentMonth).length,
@@ -73,8 +78,8 @@ export default function Dashboard() {
       ongoing: { label: 'Berlangsung', className: 'bg-green-100 text-green-800' },
       completed: { label: 'Selesai', className: 'bg-gray-100 text-gray-800' }
     };
-    
-    const config = statusConfig[status];
+
+    const config = statusConfig[status] || { label: 'Unknown', className: 'bg-gray-100 text-gray-800' };
     return (
       <Badge className={`${config.className} border-0 text-xs`}>
         {config.label}
@@ -82,10 +87,25 @@ export default function Dashboard() {
     );
   };
 
+  // Quick Actions Handlers
+  const handleCreateEvent = (eventData: any) => {
+    addEvent(eventData);
+    // Refresh data after creating event
+    refetch();
+  };
+
+  const handleNavigateToEvents = () => {
+    router.push('/events');
+  };
+
+  const handleOpenCreateEventDialog = () => {
+    setShowCreateEventDialog(true);
+  };
+
   return (
     <div className="space-y-8">
       {/* Welcome Header */}
-      <div 
+      <div
         className="relative rounded-2xl p-8 text-white overflow-hidden"
         style={{
           backgroundImage: `linear-gradient(rgba(13, 148, 136, 0.85), rgba(13, 148, 136, 0.85)), url('https://images.unsplash.com/photo-1665491961263-2c9f8deebf63?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMGNvbmZlcmVuY2UlMjBldmVudCUyMGF1ZGl0b3JpdW18ZW58MXx8fHwxNzU3MzIzNjQyfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')`,
@@ -102,7 +122,7 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex flex-col items-end text-right gap-2">
-            <div className="text-lg md:text-2xl">{new Date().toLocaleDateString('id-ID', { 
+            <div className="text-lg md:text-2xl">{new Date().toLocaleDateString('id-ID', {
               weekday: 'long',
               year: 'numeric',
               month: 'long',
@@ -122,8 +142,8 @@ export default function Dashboard() {
 
       {/* Error State */}
       {error && (
-        <ErrorAlert 
-          error={error} 
+        <ErrorAlert
+          error={error}
           onRetry={refetch}
         />
       )}
@@ -279,10 +299,11 @@ export default function Dashboard() {
                 <div className="text-center py-8 text-gray-500">
                   <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                   <p className="mb-3">Tidak ada event mendatang</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="border-teal-300 text-teal-700 hover:bg-teal-50"
+                  <Button
+                    onClick={handleOpenCreateEventDialog}
+                    variant="outline"
+                    size="sm"
+                    className="border-teal-300 text-teal-700 hover:bg-teal-50 transition-all duration-200 hover:scale-[1.02] hover:shadow-md active:scale-[0.98]"
                   >
                     Buat Event Pertama
                   </Button>
@@ -302,22 +323,25 @@ export default function Dashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button 
-                className="w-full justify-start bg-teal-600 hover:bg-teal-700 text-white"
+              <Button
+                onClick={handleOpenCreateEventDialog}
+                className="w-full justify-start bg-teal-600 hover:bg-teal-700 text-white transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Buat Event Baru
               </Button>
-              <Button 
-                variant="outline" 
-                className="w-full justify-start border-teal-300 text-teal-700 hover:bg-teal-50"
+              <Button
+                variant="outline"
+                className="w-full justify-start border-teal-300 text-teal-700 hover:bg-teal-50 transition-all duration-200"
+                disabled
               >
                 <TrendingUp className="h-4 w-4 mr-2" />
                 Lihat Statistik
               </Button>
-              <Button 
-                variant="outline" 
-                className="w-full justify-start border-teal-300 text-teal-700 hover:bg-teal-50"
+              <Button
+                onClick={handleNavigateToEvents}
+                variant="outline"
+                className="w-full justify-start border-teal-300 text-teal-700 hover:bg-teal-50 transition-all duration-200 hover:scale-[1.02] hover:shadow-md active:scale-[0.98]"
               >
                 <Calendar className="h-4 w-4 mr-2" />
                 Kelola Event
@@ -344,7 +368,7 @@ export default function Dashboard() {
                 </div>
               ) : events.length > 0 ? (
                 (() => {
-                  const topEvent = events.reduce((max: Event, event: Event) => 
+                  const topEvent = events.reduce((max: Event, event: Event) =>
                     event.participants > max.participants ? event : max
                   );
                   return (
@@ -368,6 +392,13 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Event Form Dialog */}
+      <EventFormDialog
+        open={showCreateEventDialog}
+        onOpenChange={setShowCreateEventDialog}
+        onCreateEvent={handleCreateEvent}
+      />
     </div>
   );
 }

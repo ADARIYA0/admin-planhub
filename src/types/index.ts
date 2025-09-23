@@ -2,12 +2,16 @@ export interface Event {
   id: string;
   title: string;
   date: Date;
+  startDate: Date;
+  endDate: Date;
   time: string;
   location: string;
   flyer: string;
   certificate: string;
+  imageUrl: string;
   description: string;
   participants: number;
+  capacity: number;
   status: 'upcoming' | 'ongoing' | 'completed';
 }
 
